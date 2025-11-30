@@ -71,15 +71,8 @@ const createSale = async (req, res, next) => {
       throw new ApiError(400, 'Sale must have at least one item');
     }
 
-    // Generate invoice number
-    let settings = await Settings.findOne().session(session);
-    if (!settings) {
-      settings = await Settings.create([{ invoicePrefix: 'INV', nextInvoiceNumber: 1001 }], { session });
-      settings = settings[0];
-    }
-
-    const invoiceNo = `${settings.invoicePrefix}-${String(settings.nextInvoiceNumber).padStart(6, '0')}`;
-    await Settings.findByIdAndUpdate(settings._id, { $inc: { nextInvoiceNumber: 1 } }, { session });
+    // Generate unique invoice number
+    const invoiceNo = await generateUniqueInvoiceNo(session);
 
     // Process items and calculate totals
     let subtotal = 0;
@@ -163,6 +156,34 @@ const createSale = async (req, res, next) => {
   } finally {
     session.endSession();
   }
+};
+
+// Helper function to generate unique invoice number
+const generateUniqueInvoiceNo = async (session) => {
+  let settings = await Settings.findOne().session(session);
+  
+  if (!settings) {
+    settings = new Settings({
+      invoicePrefix: 'INV',
+      nextInvoiceNumber: 1001,
+    });
+    await settings.save({ session });
+  }
+
+  const invoiceNo = `${settings.invoicePrefix}-${String(settings.nextInvoiceNumber).padStart(6, '0')}`;
+  
+  // Increment the invoice number
+  settings.nextInvoiceNumber += 1;
+  await settings.save({ session });
+
+  // Double check for uniqueness
+  const existing = await Sale.findOne({ invoiceNo }).session(session);
+  if (existing) {
+    // If duplicate, try again with incremented number
+    return generateUniqueInvoiceNo(session);
+  }
+
+  return invoiceNo;
 };
 
 module.exports = { getSales, getSale, createSale };

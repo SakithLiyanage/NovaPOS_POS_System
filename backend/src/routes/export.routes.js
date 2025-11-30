@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Sale, Product, Settings } = require('../models');
+const Sale = require('../models/Sale');
+const Product = require('../models/Product');
 const { auth, requireRole } = require('../middleware/auth');
 const { generateCSV, generateReceiptHTML } = require('../utils/exportUtils');
 
@@ -9,13 +10,13 @@ router.use(auth);
 // Export sales as CSV
 router.get('/sales', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
   try {
-    const { dateFrom, dateTo } = req.query;
+    const { startDate, endDate } = req.query;
     const query = { status: 'COMPLETED' };
     
-    if (dateFrom || dateTo) {
+    if (startDate || endDate) {
       query.createdAt = {};
-      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) query.createdAt.$lte = new Date(dateTo + 'T23:59:59');
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate + 'T23:59:59');
     }
 
     const sales = await Sale.find(query)
@@ -24,19 +25,23 @@ router.get('/sales', requireRole('OWNER', 'MANAGER'), async (req, res, next) => 
       .sort('-createdAt')
       .lean();
 
-    const columns = [
-      { key: 'invoiceNo', label: 'Invoice' },
-      { key: 'createdAt', label: 'Date', format: 'date' },
-      { key: 'cashier.name', label: 'Cashier' },
-      { key: 'customer.name', label: 'Customer' },
-      { key: 'subtotal', label: 'Subtotal', format: 'currency' },
-      { key: 'discount', label: 'Discount %' },
-      { key: 'taxAmount', label: 'Tax', format: 'currency' },
-      { key: 'grandTotal', label: 'Total', format: 'currency' },
-      { key: 'paymentMethod', label: 'Payment' },
-    ];
+    // Generate CSV
+    const headers = 'Invoice,Date,Cashier,Customer,Subtotal,Discount,Tax,Total,Payment\n';
+    const rows = sales.map(s => {
+      return [
+        s.invoiceNo,
+        new Date(s.createdAt).toISOString().split('T')[0],
+        s.cashier?.name || 'N/A',
+        s.customer?.name || 'Walk-in',
+        s.subtotal?.toFixed(2) || '0.00',
+        s.discount || 0,
+        s.taxAmount?.toFixed(2) || '0.00',
+        s.grandTotal?.toFixed(2) || '0.00',
+        s.paymentMethod,
+      ].join(',');
+    }).join('\n');
 
-    const csv = generateCSV(sales, columns);
+    const csv = headers + rows;
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=sales_export_${Date.now()}.csv`);
@@ -55,19 +60,22 @@ router.get('/products', requireRole('OWNER', 'MANAGER'), async (req, res, next) 
       .sort('name')
       .lean();
 
-    const columns = [
-      { key: 'name', label: 'Name' },
-      { key: 'sku', label: 'SKU' },
-      { key: 'barcode', label: 'Barcode' },
-      { key: 'category.name', label: 'Category' },
-      { key: 'brand.name', label: 'Brand' },
-      { key: 'costPrice', label: 'Cost', format: 'currency' },
-      { key: 'salePrice', label: 'Price', format: 'currency' },
-      { key: 'currentStock', label: 'Stock' },
-      { key: 'isActive', label: 'Active' },
-    ];
+    const headers = 'Name,SKU,Barcode,Category,Brand,Cost,Price,Stock,Status\n';
+    const rows = products.map(p => {
+      return [
+        `"${p.name}"`,
+        p.sku,
+        p.barcode || '',
+        p.category?.name || '',
+        p.brand?.name || '',
+        p.costPrice?.toFixed(2) || '0.00',
+        p.salePrice?.toFixed(2) || '0.00',
+        p.currentStock || 0,
+        p.isActive ? 'Active' : 'Inactive',
+      ].join(',');
+    }).join('\n');
 
-    const csv = generateCSV(products, columns);
+    const csv = headers + rows;
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=products_export_${Date.now()}.csv`);

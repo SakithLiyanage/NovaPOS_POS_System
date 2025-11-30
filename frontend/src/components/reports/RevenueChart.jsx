@@ -1,13 +1,26 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import { Card, Skeleton } from '../ui';
+import Card from '../ui/Card';
+import Skeleton from '../ui/Skeleton';
 import { formatCurrency } from '../../utils/formatters';
 
 const RevenueChart = ({ data, loading }) => {
-  const chartData = data?.map((d) => ({
-    date: d.date.slice(5),
-    revenue: d.revenue,
-  })) || [];
+  if (loading) {
+    return (
+      <Card animate={false}>
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-lg font-semibold">Revenue Trend</h3>
+        </div>
+        <Skeleton className="h-64" />
+      </Card>
+    );
+  }
+
+  const chartData = (data || []).map((d) => ({
+    date: d._id?.slice(5) || d.date?.slice(5) || '',
+    revenue: d.revenue || 0,
+  }));
 
   return (
     <Card animate={false}>
@@ -15,8 +28,10 @@ const RevenueChart = ({ data, loading }) => {
         <TrendingUp className="w-5 h-5 text-indigo-600" />
         <h3 className="text-lg font-semibold">Revenue Trend</h3>
       </div>
-      {loading ? (
-        <Skeleton className="h-64" />
+      {chartData.length === 0 ? (
+        <div className="h-64 flex items-center justify-center text-gray-500">
+          No data available
+        </div>
       ) : (
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={chartData}>

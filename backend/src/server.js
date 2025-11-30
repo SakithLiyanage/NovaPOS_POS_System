@@ -20,6 +20,8 @@ const inventoryRoutes = require('./routes/inventory.routes');
 const reportRoutes = require('./routes/report.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const searchRoutes = require('./routes/search.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const exportRoutes = require('./routes/export.routes');
 
 const app = express();
 
@@ -62,6 +64,8 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/export', exportRoutes);
 
 // 404 handler
 app.use((req, res) => {
