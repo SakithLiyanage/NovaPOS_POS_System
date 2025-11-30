@@ -1,50 +1,35 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const messages = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({
-      message: 'Validation Error',
-      errors: messages,
-    });
+    statusCode = 400;
+    const errors = Object.values(err.errors).map(e => e.message);
+    message = errors.join(', ');
   }
 
   // Mongoose duplicate key error
   if (err.code === 11000) {
+    statusCode = 400;
     const field = Object.keys(err.keyValue)[0];
-    return res.status(400).json({
-      message: `${field} already exists`,
-    });
+    message = `Duplicate value for ${field}`;
   }
 
   // Mongoose cast error (invalid ObjectId)
   if (err.name === 'CastError') {
-    return res.status(400).json({
-      message: 'Invalid ID format',
-    });
+    statusCode = 400;
+    message = 'Invalid ID format';
   }
 
-  // Joi validation error
-  if (err.isJoi) {
-    return res.status(400).json({
-      message: 'Validation Error',
-      errors: err.details.map(d => d.message),
-    });
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error:', err);
   }
 
-  // Custom API error
-  if (err.statusCode) {
-    return res.status(err.statusCode).json({
-      message: err.message,
-    });
-  }
-
-  // Default server error
-  res.status(500).json({
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : err.message,
+  res.status(statusCode).json({
+    success: false,
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 

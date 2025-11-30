@@ -1,98 +1,72 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Store, Receipt, Bell } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, Card, Input } from '../components/ui';
-import api from '../services/api';
-import toast from 'react-hot-toast';
+import { Save } from 'lucide-react';
+import Button from '../components/ui/Button';
+import StoreSettings from '../components/settings/StoreSettings';
+import TaxSettings from '../components/settings/TaxSettings';
+import { useSettings, useUpdateSettings } from '../hooks/useSettings';
 
 const SettingsPage = () => {
+  const { data, isLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+
   const [formData, setFormData] = useState({
-    storeName: '', storeAddress: '', storePhone: '', storeEmail: '',
-    currency: 'USD', currencySymbol: '$', taxRate: 0,
-    invoicePrefix: 'INV', receiptFooter: '',
-    showProductImages: true, lowStockWarning: true,
-  });
-
-  const queryClient = useQueryClient();
-
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
-    queryFn: () => api.get('/settings').then(res => res.data),
+    storeName: '',
+    storeAddress: '',
+    storePhone: '',
+    storeEmail: '',
+    currency: 'USD',
+    currencySymbol: '$',
+    taxRate: 0,
+    invoicePrefix: 'INV',
+    receiptFooter: 'Thank you for your purchase!',
   });
 
   useEffect(() => {
-    if (settings?.data) setFormData(settings.data);
-  }, [settings]);
+    if (data?.data) {
+      setFormData({
+        storeName: data.data.storeName || '',
+        storeAddress: data.data.storeAddress || '',
+        storePhone: data.data.storePhone || '',
+        storeEmail: data.data.storeEmail || '',
+        currency: data.data.currency || 'USD',
+        currencySymbol: data.data.currencySymbol || '$',
+        taxRate: data.data.taxRate || 0,
+        invoicePrefix: data.data.invoicePrefix || 'INV',
+        receiptFooter: data.data.receiptFooter || '',
+      });
+    }
+  }, [data]);
 
-  const updateMutation = useMutation({
-    mutationFn: (data) => api.put('/settings', data),
-    onSuccess: () => { queryClient.invalidateQueries(['settings']); toast.success('Settings saved'); },
-  });
-
-  const handleSubmit = (e) => { e.preventDefault(); updateMutation.mutate(formData); };
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    updateSettings.mutate(formData);
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /></div>;
+  }
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-500 mt-1">Configure your store preferences</p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-500 mt-1">Configure your store settings</p>
+        </div>
+        <Button icon={Save} onClick={handleSubmit} loading={updateSettings.isPending}>
+          Save Changes
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card animate={false}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-indigo-100 rounded-lg"><Store className="w-5 h-5 text-indigo-600" /></div>
-            <h2 className="text-lg font-semibold">Store Information</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Store Name" name="storeName" value={formData.storeName} onChange={handleChange} />
-            <Input label="Phone" name="storePhone" value={formData.storePhone} onChange={handleChange} />
-            <Input label="Email" name="storeEmail" type="email" value={formData.storeEmail} onChange={handleChange} />
-            <Input label="Address" name="storeAddress" value={formData.storeAddress} onChange={handleChange} />
-          </div>
-        </Card>
-
-        <Card animate={false}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-emerald-100 rounded-lg"><Receipt className="w-5 h-5 text-emerald-600" /></div>
-            <h2 className="text-lg font-semibold">Tax & Currency</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input label="Currency" name="currency" value={formData.currency} onChange={handleChange} />
-            <Input label="Currency Symbol" name="currencySymbol" value={formData.currencySymbol} onChange={handleChange} />
-            <Input label="Default Tax Rate (%)" name="taxRate" type="number" value={formData.taxRate} onChange={handleChange} />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <Input label="Invoice Prefix" name="invoicePrefix" value={formData.invoicePrefix} onChange={handleChange} />
-            <Input label="Receipt Footer" name="receiptFooter" value={formData.receiptFooter} onChange={handleChange} />
-          </div>
-        </Card>
-
-        <Card animate={false}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-amber-100 rounded-lg"><Bell className="w-5 h-5 text-amber-600" /></div>
-            <h2 className="text-lg font-semibold">POS Preferences</h2>
-          </div>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="showProductImages" checked={formData.showProductImages} onChange={handleChange} className="w-4 h-4 text-indigo-600 rounded" />
-              <span className="text-gray-700">Show product images in POS</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" name="lowStockWarning" checked={formData.lowStockWarning} onChange={handleChange} className="w-4 h-4 text-indigo-600 rounded" />
-              <span className="text-gray-700">Show low stock warnings</span>
-            </label>
-          </div>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit" icon={Save} loading={updateMutation.isLoading}>Save Settings</Button>
-        </div>
+        <StoreSettings formData={formData} onChange={handleChange} />
+        <TaxSettings formData={formData} onChange={handleChange} />
       </form>
     </motion.div>
   );

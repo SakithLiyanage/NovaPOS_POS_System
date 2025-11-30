@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const ApiError = require('../utils/apiError');
+const { logAction } = require('../services/auditService');
 
 const login = async (req, res, next) => {
   try {
@@ -31,10 +32,17 @@ const login = async (req, res, next) => {
     // Generate token
     const token = generateToken(user._id);
 
+    await logAction(req, 'USER_LOGIN', 'User', user._id);
+
     res.json({
       success: true,
       data: {
-        user: user.toJSON(),
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
         token,
       },
     });

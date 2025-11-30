@@ -105,14 +105,14 @@ const deleteUser = async (req, res, next) => {
       throw new ApiError(400, 'Cannot delete your own account');
     }
 
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!user) {
       throw new ApiError(404, 'User not found');
     }
 
     res.json({
       success: true,
-      message: 'User deleted successfully',
+      message: 'User deactivated',
     });
   } catch (error) {
     next(error);

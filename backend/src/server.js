@@ -19,9 +19,6 @@ const customerRoutes = require('./routes/customer.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const reportRoutes = require('./routes/report.routes');
 const settingsRoutes = require('./routes/settings.routes');
-const exportRoutes = require('./routes/export.routes');
-const dashboardRoutes = require('./routes/dashboard.routes');
-const auditRoutes = require('./routes/audit.routes');
 const searchRoutes = require('./routes/search.routes');
 
 const app = express();
@@ -64,14 +61,11 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/export', exportRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/audit', auditRoutes);
 app.use('/api/search', searchRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
 // Error handler

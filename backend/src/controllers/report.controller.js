@@ -12,81 +12,36 @@ const getSummary = async (req, res, next) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    // Today's stats
-    const todaySales = await Sale.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: today },
-          status: 'COMPLETED',
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$grandTotal' },
-          count: { $sum: 1 },
-        },
-      },
+    const [todayStats, yesterdayStats, productCount] = await Promise.all([
+      Sale.aggregate([
+        { $match: { createdAt: { $gte: today }, status: 'COMPLETED' } },
+        { $group: { _id: null, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } },
+      ]),
+      Sale.aggregate([
+        { $match: { createdAt: { $gte: yesterday, $lt: today }, status: 'COMPLETED' } },
+        { $group: { _id: null, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } },
+      ]),
+      Product.countDocuments({ isActive: true }),
     ]);
 
-    // Yesterday's stats for comparison
-    const yesterdaySales = await Sale.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: yesterday, $lt: today },
-          status: 'COMPLETED',
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$grandTotal' },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    const todayData = todayStats[0] || { revenue: 0, count: 0 };
+    const yesterdayData = yesterdayStats[0] || { revenue: 0, count: 0 };
 
-    const todayData = todaySales[0] || { totalRevenue: 0, count: 0 };
-    const yesterdayData = yesterdaySales[0] || { totalRevenue: 0, count: 0 };
-
-    // Calculate percentage changes
-    const revenueChange = yesterdayData.totalRevenue > 0
-      ? ((todayData.totalRevenue - yesterdayData.totalRevenue) / yesterdayData.totalRevenue * 100).toFixed(1)
+    const revenueChange = yesterdayData.revenue > 0
+      ? ((todayData.revenue - yesterdayData.revenue) / yesterdayData.revenue * 100).toFixed(1)
       : 0;
-
-    const salesChange = yesterdayData.count > 0
-      ? ((todayData.count - yesterdayData.count) / yesterdayData.count * 100).toFixed(1)
-      : 0;
-
-    const avgOrderValue = todayData.count > 0 
-      ? todayData.totalRevenue / todayData.count 
-      : 0;
-
-    const yesterdayAvg = yesterdayData.count > 0 
-      ? yesterdayData.totalRevenue / yesterdayData.count 
-      : 0;
-
-    const aovChange = yesterdayAvg > 0
-      ? ((avgOrderValue - yesterdayAvg) / yesterdayAvg * 100).toFixed(1)
-      : 0;
-
-    // Active products count
-    const activeProducts = await Product.countDocuments({ isActive: true });
 
     res.json({
       success: true,
       data: {
-        todayRevenue: todayData.totalRevenue,
+        todayRevenue: todayData.revenue,
         todaySales: todayData.count,
-        avgOrderValue,
-        activeProducts,
+        avgOrderValue: todayData.count > 0 ? todayData.revenue / todayData.count : 0,
+        activeProducts: productCount,
         revenueChange: parseFloat(revenueChange),
-        salesChange: parseFloat(salesChange),
-        aovChange: parseFloat(aovChange),
       },
     });
   } catch (error) {
@@ -97,32 +52,16 @@ const getSummary = async (req, res, next) => {
 const getSalesByDate = async (req, res, next) => {
   try {
     const { startDate, endDate, groupBy = 'day' } = req.query;
-
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const end = endDate ? new Date(endDate) : new Date();
+    const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
 
-    let dateFormat;
-    switch (groupBy) {
-      case 'hour':
-        dateFormat = { $dateToString: { format: '%Y-%m-%d %H:00', date: '$createdAt' } };
-        break;
-      case 'month':
-        dateFormat = { $dateToString: { format: '%Y-%m', date: '$createdAt' } };
-        break;
-      default:
-        dateFormat = { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } };
-    }
+    const dateFormat = groupBy === 'month' ? '%Y-%m' : '%Y-%m-%d';
 
-    const sales = await Sale.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: start, $lte: end },
-          status: 'COMPLETED',
-        },
-      },
+    const result = await Sale.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end }, status: 'COMPLETED' } },
       {
         $group: {
-          _id: dateFormat,
+          _id: { $dateToString: { format: dateFormat, date: '$createdAt' } },
           revenue: { $sum: '$grandTotal' },
           count: { $sum: 1 },
         },
@@ -130,14 +69,7 @@ const getSalesByDate = async (req, res, next) => {
       { $sort: { _id: 1 } },
     ]);
 
-    res.json({
-      success: true,
-      data: sales.map(s => ({
-        date: s._id,
-        revenue: s.revenue,
-        count: s.count,
-      })),
-    });
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
@@ -145,24 +77,18 @@ const getSalesByDate = async (req, res, next) => {
 
 const getTopProducts = async (req, res, next) => {
   try {
-    const { startDate, endDate, limit = 10 } = req.query;
-
+    const { limit = 10, startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const end = endDate ? new Date(endDate) : new Date();
+    const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
 
-    const topProducts = await Sale.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: start, $lte: end },
-          status: 'COMPLETED',
-        },
-      },
+    const result = await Sale.aggregate([
+      { $match: { createdAt: { $gte: start, $lte: end }, status: 'COMPLETED' } },
       { $unwind: '$items' },
       {
         $group: {
           _id: '$items.product',
           name: { $first: '$items.name' },
-          soldCount: { $sum: '$items.quantity' },
+          quantitySold: { $sum: '$items.quantity' },
           revenue: { $sum: '$items.lineTotal' },
         },
       },
@@ -170,10 +96,7 @@ const getTopProducts = async (req, res, next) => {
       { $limit: parseInt(limit) },
     ]);
 
-    res.json({
-      success: true,
-      data: topProducts,
-    });
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }

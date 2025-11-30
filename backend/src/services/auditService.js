@@ -8,11 +8,11 @@ const logAction = async (req, action, targetType = null, targetId = null, detail
       targetType,
       targetId,
       details,
-      ipAddress: req.ip,
+      ipAddress: req.ip || req.connection?.remoteAddress,
       userAgent: req.get('user-agent'),
     });
   } catch (error) {
-    console.error('Audit log error:', error);
+    console.error('Audit log error:', error.message);
   }
 };
 

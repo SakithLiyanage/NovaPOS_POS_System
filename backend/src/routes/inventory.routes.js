@@ -11,9 +11,6 @@ router.use(auth);
 
 router.get('/low-stock', getLowStock);
 router.get('/history', getStockHistory);
-
-router.use(requireRole('OWNER', 'MANAGER'));
-
-router.post('/adjust', adjustStock);
+router.post('/adjust', requireRole('OWNER', 'MANAGER'), adjustStock);
 
 module.exports = router;

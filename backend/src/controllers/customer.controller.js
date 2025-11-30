@@ -4,14 +4,14 @@ const ApiError = require('../utils/apiError');
 
 const getCustomers = async (req, res, next) => {
   try {
-    const { search, page = 1, limit = 20 } = req.query;
+    const { search, page = 1, limit = 50 } = req.query;
     const query = {};
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+        { name: new RegExp(search, 'i') },
+        { phone: new RegExp(search, 'i') },
+        { email: new RegExp(search, 'i') },
       ];
     }
 
@@ -100,7 +100,7 @@ const deleteCustomer = async (req, res, next) => {
     }
     res.json({
       success: true,
-      message: 'Customer deleted successfully',
+      message: 'Customer deleted',
     });
   } catch (error) {
     next(error);

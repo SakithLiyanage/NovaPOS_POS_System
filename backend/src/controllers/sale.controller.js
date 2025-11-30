@@ -7,38 +7,18 @@ const ApiError = require('../utils/apiError');
 
 const getSales = async (req, res, next) => {
   try {
-    const {
-      search,
-      dateFrom,
-      dateTo,
-      cashierId,
-      customerId,
-      paymentMethod,
-      status,
-      page = 1,
-      limit = 20,
-    } = req.query;
-
+    const { page = 1, limit = 20, search, status, paymentMethod, startDate, endDate } = req.query;
     const query = {};
 
     if (search) {
-      query.invoiceNo = { $regex: search, $options: 'i' };
+      query.invoiceNo = new RegExp(search, 'i');
     }
-
-    if (dateFrom || dateTo) {
-      query.createdAt = {};
-      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) query.createdAt.$lte = new Date(dateTo + 'T23:59:59');
-    }
-
-    if (cashierId) query.cashier = cashierId;
-    if (customerId) query.customer = customerId;
-    if (paymentMethod) query.paymentMethod = paymentMethod;
     if (status) query.status = status;
-
-    // Cashiers can only see their own sales
-    if (req.user.role === 'CASHIER') {
-      query.cashier = req.user._id;
+    if (paymentMethod) query.paymentMethod = paymentMethod;
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) query.createdAt.$lte = new Date(endDate + 'T23:59:59');
     }
 
     const total = await Sale.countDocuments(query);
@@ -68,17 +48,13 @@ const getSale = async (req, res, next) => {
   try {
     const sale = await Sale.findById(req.params.id)
       .populate('cashier', 'name email')
-      .populate('customer', 'name phone email')
-      .populate('items.product', 'name sku imageUrl');
+      .populate('customer', 'name phone email');
 
     if (!sale) {
       throw new ApiError(404, 'Sale not found');
     }
 
-    res.json({
-      success: true,
-      data: sale,
-    });
+    res.json({ success: true, data: sale });
   } catch (error) {
     next(error);
   }
@@ -89,117 +65,98 @@ const createSale = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const { items, customerId, discount = 0, paymentMethod, notes } = req.body;
+    const { items, customerId, discount = 0, paymentMethod, amountPaid, notes } = req.body;
 
-    // Validate and get products
-    const productIds = items.map(item => item.productId);
-    const products = await Product.find({ _id: { $in: productIds } }).session(session);
-
-    if (products.length !== items.length) {
-      throw new ApiError(400, 'One or more products not found');
+    if (!items || items.length === 0) {
+      throw new ApiError(400, 'Sale must have at least one item');
     }
 
-    // Build sale items and validate stock
-    const saleItems = [];
-    let subtotal = 0;
-
-    for (const item of items) {
-      const product = products.find(p => p._id.toString() === item.productId);
-
-      if (product.currentStock < item.quantity) {
-        throw new ApiError(400, `Insufficient stock for ${product.name}`);
-      }
-
-      const lineTotal = item.unitPrice * item.quantity;
-      subtotal += lineTotal;
-
-      saleItems.push({
-        product: product._id,
-        name: product.name,
-        sku: product.sku,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        taxRate: item.taxRate || product.taxRate || 0,
-        lineTotal,
-      });
-    }
-
-    // Calculate totals
-    const discountAmount = subtotal * (discount / 100);
-    const discountedSubtotal = subtotal - discountAmount;
-    
-    let taxAmount = 0;
-    for (const item of saleItems) {
-      const itemDiscountedTotal = item.lineTotal * (1 - discount / 100);
-      taxAmount += itemDiscountedTotal * (item.taxRate / 100);
-    }
-
-    const grandTotal = discountedSubtotal + taxAmount;
-
-    // Get next invoice number
+    // Generate invoice number
     let settings = await Settings.findOne().session(session);
     if (!settings) {
-      settings = await Settings.create([{}], { session });
+      settings = await Settings.create([{ invoicePrefix: 'INV', nextInvoiceNumber: 1001 }], { session });
       settings = settings[0];
     }
 
     const invoiceNo = `${settings.invoicePrefix}-${String(settings.nextInvoiceNumber).padStart(6, '0')}`;
+    await Settings.findByIdAndUpdate(settings._id, { $inc: { nextInvoiceNumber: 1 } }, { session });
 
-    // Create sale
-    const sale = await Sale.create([{
-      invoiceNo,
-      cashier: req.user._id,
-      customer: customerId || null,
-      items: saleItems,
-      subtotal,
-      discount,
-      discountAmount,
-      taxAmount,
-      grandTotal,
-      paymentMethod,
-      notes,
-    }], { session });
+    // Process items and calculate totals
+    let subtotal = 0;
+    let taxAmount = 0;
+    const processedItems = [];
 
-    // Update stock and create stock entries
-    for (const item of saleItems) {
-      const product = products.find(p => p._id.toString() === item.product.toString());
-      const newStock = product.currentStock - item.quantity;
+    for (const item of items) {
+      const product = await Product.findById(item.productId).session(session);
+      
+      if (!product) {
+        throw new ApiError(404, `Product not found: ${item.productId}`);
+      }
 
-      await Product.findByIdAndUpdate(
-        item.product,
-        { currentStock: newStock },
-        { session }
-      );
+      if (product.currentStock < item.quantity) {
+        throw new ApiError(400, `Insufficient stock for ${product.name}. Available: ${product.currentStock}`);
+      }
 
+      const lineTotal = item.quantity * product.salePrice;
+      const lineTax = lineTotal * (product.taxRate / 100);
+
+      processedItems.push({
+        product: product._id,
+        name: product.name,
+        sku: product.sku,
+        quantity: item.quantity,
+        unitPrice: product.salePrice,
+        taxRate: product.taxRate,
+        lineTotal,
+      });
+
+      subtotal += lineTotal;
+      taxAmount += lineTax;
+
+      // Deduct stock
+      const previousStock = product.currentStock;
+      product.currentStock -= item.quantity;
+      await product.save({ session });
+
+      // Create stock entry
       await StockEntry.create([{
-        product: item.product,
+        product: product._id,
         quantityChange: -item.quantity,
-        previousStock: product.currentStock,
-        newStock,
+        previousStock,
+        newStock: product.currentStock,
         reason: 'SALE',
         reference: invoiceNo,
         createdBy: req.user._id,
       }], { session });
     }
 
-    // Increment invoice number
-    await Settings.findByIdAndUpdate(
-      settings._id,
-      { $inc: { nextInvoiceNumber: 1 } },
-      { session }
-    );
+    const discountAmount = subtotal * (discount / 100);
+    const grandTotal = subtotal - discountAmount + taxAmount;
+
+    const sale = await Sale.create([{
+      invoiceNo,
+      cashier: req.user._id,
+      customer: customerId || null,
+      items: processedItems,
+      subtotal,
+      discount,
+      discountAmount,
+      taxAmount,
+      grandTotal,
+      paymentMethod,
+      amountPaid: amountPaid || grandTotal,
+      changeAmount: (amountPaid || grandTotal) - grandTotal,
+      notes,
+      status: 'COMPLETED',
+    }], { session });
 
     await session.commitTransaction();
 
-    // Fetch complete sale with populated fields
-    const completeSale = await Sale.findById(sale[0]._id)
+    const populatedSale = await Sale.findById(sale[0]._id)
       .populate('cashier', 'name')
       .populate('customer', 'name phone');
 
-    res.status(201).json({
-      success: true,
-      data: completeSale,
-    });
+    res.status(201).json({ success: true, data: populatedSale });
   } catch (error) {
     await session.abortTransaction();
     next(error);

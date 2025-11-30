@@ -1,31 +1,32 @@
 const Joi = require('joi');
 
 const createProductSchema = Joi.object({
-  name: Joi.string().min(1).max(200).required(),
-  sku: Joi.string().min(1).max(50).required(),
+  name: Joi.string().required().max(200),
+  sku: Joi.string().required().max(50),
   barcode: Joi.string().allow('', null),
-  categoryId: Joi.string().allow('', null),
-  brandId: Joi.string().allow('', null),
+  category: Joi.string().allow('', null),
+  brand: Joi.string().allow('', null),
   costPrice: Joi.number().min(0).default(0),
-  salePrice: Joi.number().min(0).required(),
+  salePrice: Joi.number().required().min(0),
   taxRate: Joi.number().min(0).max(100).default(0),
-  currentStock: Joi.number().min(0).default(0),
-  lowStockThreshold: Joi.number().min(0).default(10),
-  imageUrl: Joi.string().allow('', null),
+  currentStock: Joi.number().integer().min(0).default(0),
+  lowStockThreshold: Joi.number().integer().min(0).default(10),
+  imageUrl: Joi.string().uri().allow('', null),
   isActive: Joi.boolean().default(true),
 });
 
 const updateProductSchema = Joi.object({
-  name: Joi.string().min(1).max(200),
-  sku: Joi.string().min(1).max(50),
+  name: Joi.string().max(200),
+  sku: Joi.string().max(50),
   barcode: Joi.string().allow('', null),
-  categoryId: Joi.string().allow('', null),
-  brandId: Joi.string().allow('', null),
+  category: Joi.string().allow('', null),
+  brand: Joi.string().allow('', null),
   costPrice: Joi.number().min(0),
   salePrice: Joi.number().min(0),
   taxRate: Joi.number().min(0).max(100),
-  lowStockThreshold: Joi.number().min(0),
-  imageUrl: Joi.string().allow('', null),
+  currentStock: Joi.number().integer().min(0),
+  lowStockThreshold: Joi.number().integer().min(0),
+  imageUrl: Joi.string().uri().allow('', null),
   isActive: Joi.boolean(),
 });
 
