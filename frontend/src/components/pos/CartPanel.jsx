@@ -3,14 +3,16 @@ import { ShoppingCart, Trash2, User, Percent } from 'lucide-react';
 import { useCartStore } from '../../store/cartStore';
 import CartItem from './CartItem';
 import Button from '../ui/Button';
+import AIRecommendations from '../ai/AIRecommendations';
 import { formatCurrency } from '../../utils/formatters';
 
 const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
-  const { 
-    items, 
-    customer, 
+  const {
+    items,
+    customer,
     discount,
     clearCart,
+    addItem,
     getSubtotal,
     getTaxAmount,
     getTotal,
@@ -21,8 +23,18 @@ const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
   const total = getTotal();
   const discountAmount = subtotal * (discount / 100);
 
+  const handleAddRecommendedProduct = (product) => {
+    addItem({
+      productId: product._id,
+      name: product.name,
+      price: product.salePrice,
+      quantity: 1,
+      taxRate: product.taxRate,
+    });
+  };
+
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       className="w-96 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col"
@@ -40,25 +52,15 @@ const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
             )}
           </div>
           {items.length > 0 && (
-            <button
-              onClick={clearCart}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-              title="Clear cart"
-            >
+            <button onClick={clearCart} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
               <Trash2 className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Customer selector button */}
-        <button
-          onClick={onCustomerClick}
-          className="mt-3 w-full flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left"
-        >
+        <button onClick={onCustomerClick} className="mt-3 w-full flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-left">
           <User className="w-4 h-4 text-gray-400" />
-          <span className="text-sm text-gray-600 flex-1">
-            {customer?.name || 'Walk-in Customer'}
-          </span>
+          <span className="text-sm text-gray-600 flex-1">{customer?.name || 'Walk-in Customer'}</span>
           <span className="text-xs text-indigo-600">Change</span>
         </button>
       </div>
@@ -67,12 +69,7 @@ const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
       <div className="flex-1 overflow-auto p-4">
         <AnimatePresence mode="popLayout">
           {items.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="h-full flex flex-col items-center justify-center text-gray-400"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center text-gray-400">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-50" />
               <p className="text-sm">Cart is empty</p>
               <p className="text-xs mt-1">Add products to start a sale</p>
@@ -85,15 +82,15 @@ const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
             </ul>
           )}
         </AnimatePresence>
+
+        {/* AI Recommendations */}
+        <AIRecommendations cartItems={items} onAddProduct={handleAddRecommendedProduct} />
       </div>
 
       {/* Discount button */}
       {items.length > 0 && (
         <div className="px-4 py-2 border-t border-gray-100">
-          <button
-            onClick={onDiscountClick}
-            className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700"
-          >
+          <button onClick={onDiscountClick} className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700">
             <Percent className="w-4 h-4" />
             {discount > 0 ? `Discount: ${discount}%` : 'Add Discount'}
           </button>
@@ -123,12 +120,7 @@ const CartPanel = ({ onCheckout, onCustomerClick, onDiscountClick }) => {
           </div>
         </div>
 
-        <Button
-          onClick={onCheckout}
-          disabled={items.length === 0}
-          className="w-full mt-4"
-          size="lg"
-        >
+        <Button onClick={onCheckout} disabled={items.length === 0} className="w-full mt-4" size="lg">
           Checkout (F4)
         </Button>
       </div>

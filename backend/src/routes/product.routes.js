@@ -12,10 +12,29 @@ const { importProducts } = require('../controllers/import.controller');
 const { auth, requireRole } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { createProductSchema, updateProductSchema } = require('../validations/product.validation');
+const Product = require('../models/Product'); // Ensure the Product model is required
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(auth);
+
+// Barcode lookup - before other routes
+router.get('/barcode/:barcode', async (req, res, next) => {
+  try {
+    const product = await Product.findOne({ 
+      barcode: req.params.barcode,
+      isActive: true 
+    }).populate('category', 'name');
+    
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+    
+    res.json({ success: true, data: product });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/', getProducts);
 router.get('/:id', getProduct);

@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import PageTransition from '../ui/PageTransition';
+import AIChatAssistant from '../ai/AIChatAssistant';
+import { useUIStore } from '../../store/uiStore';
 
 const LayoutShell = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { sidebarCollapsed } = useUIStore();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <Sidebar 
         collapsed={sidebarCollapsed} 
@@ -18,7 +20,7 @@ const LayoutShell = () => {
 
       {/* Main content area */}
       <div 
-        className={`transition-all duration-300 ${
+        className={`flex-1 flex flex-col transition-all duration-300 ${
           sidebarCollapsed ? 'ml-20' : 'ml-64'
         }`}
       >
@@ -26,12 +28,14 @@ const LayoutShell = () => {
         <Topbar />
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="flex-1 p-6 overflow-auto">
           <PageTransition>
             <Outlet />
           </PageTransition>
         </main>
       </div>
+
+      <AIChatAssistant />
     </div>
   );
 };

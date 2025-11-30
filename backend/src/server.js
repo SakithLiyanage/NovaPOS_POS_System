@@ -22,6 +22,16 @@ const settingsRoutes = require('./routes/settings.routes');
 const searchRoutes = require('./routes/search.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const exportRoutes = require('./routes/export.routes');
+const cashDrawerRoutes = require('./routes/cashDrawer.routes');
+const discountRoutes = require('./routes/discount.routes');
+const heldSaleRoutes = require('./routes/heldSale.routes');
+const supplierRoutes = require('./routes/supplier.routes');
+const purchaseOrderRoutes = require('./routes/purchaseOrder.routes');
+const giftCardRoutes = require('./routes/giftCard.routes');
+const loyaltyRoutes = require('./routes/loyalty.routes');
+const expenseRoutes = require('./routes/expense.routes');
+const advancedReportRoutes = require('./routes/advancedReports.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 
@@ -66,6 +76,16 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/cash-drawer', cashDrawerRoutes);
+app.use('/api/discounts', discountRoutes);
+app.use('/api/held-sales', heldSaleRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/gift-cards', giftCardRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/advanced-reports', advancedReportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req, res) => {

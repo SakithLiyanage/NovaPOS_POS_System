@@ -1,15 +1,10 @@
-import { Store } from 'lucide-react';
-import { Card, Input } from '../ui';
+import Input from '../ui/Input';
+import Card from '../ui/Card';
 
 const StoreSettings = ({ formData, onChange }) => {
   return (
     <Card animate={false}>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-indigo-100 rounded-lg">
-          <Store className="w-5 h-5 text-indigo-600" />
-        </div>
-        <h2 className="text-lg font-semibold">Store Information</h2>
-      </div>
+      <h2 className="text-lg font-semibold mb-4">Store Information</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Store Name"
@@ -26,7 +21,6 @@ const StoreSettings = ({ formData, onChange }) => {
         <Input
           label="Email"
           name="storeEmail"
-          type="email"
           value={formData.storeEmail}
           onChange={onChange}
         />
@@ -34,6 +28,18 @@ const StoreSettings = ({ formData, onChange }) => {
           label="Address"
           name="storeAddress"
           value={formData.storeAddress}
+          onChange={onChange}
+        />
+        <Input
+          label="Invoice Prefix"
+          name="invoicePrefix"
+          value={formData.invoicePrefix}
+          onChange={onChange}
+        />
+        <Input
+          label="Receipt Footer"
+          name="receiptFooter"
+          value={formData.receiptFooter}
           onChange={onChange}
         />
       </div>

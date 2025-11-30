@@ -6,6 +6,7 @@ import SalesTrendChart from '../components/dashboard/SalesTrendChart';
 import LowStockWidget from '../components/dashboard/LowStockWidget';
 import RecentSales from '../components/dashboard/RecentSales';
 import TopProductsChart from '../components/reports/TopProductsChart';
+import AISalesInsights from '../components/ai/AISalesInsights';
 import { useTopProducts } from '../hooks/useReports';
 
 const DashboardPage = () => {
@@ -32,19 +33,21 @@ const DashboardPage = () => {
           todaySales: stats?.today?.sales,
           avgOrderValue: stats?.today?.avgOrder,
           activeProducts: stats?.products?.active,
-          revenueChange: stats?.month?.growth,
         }}
         loading={isLoading}
       />
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SalesTrendChart data={stats?.salesTrend} loading={isLoading} />
-        <TopProductsChart data={topProducts?.data} loading={topLoading} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <SalesTrendChart data={stats?.salesTrend} loading={isLoading} />
+        </div>
+        <AISalesInsights />
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TopProductsChart data={topProducts?.data} loading={topLoading} />
         <RecentSales />
         <LowStockWidget />
       </div>

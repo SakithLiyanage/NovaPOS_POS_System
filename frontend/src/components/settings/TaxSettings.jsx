@@ -1,5 +1,13 @@
 import { Receipt } from 'lucide-react';
-import { Card, Input } from '../ui';
+import Input from '../ui/Input';
+import Select from '../ui/Select';
+import Card from '../ui/Card';
+
+const currencies = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
 
 const TaxSettings = ({ formData, onChange }) => {
   return (

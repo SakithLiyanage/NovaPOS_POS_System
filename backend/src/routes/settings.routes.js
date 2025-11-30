@@ -9,7 +9,7 @@ router.get('/', async (req, res, next) => {
   try {
     let settings = await Settings.findOne();
     if (!settings) {
-      settings = await Settings.create({});
+      settings = await Settings.create({ storeName: 'NovaPOS', invoicePrefix: 'INV', nextInvoiceNumber: 1001 });
     }
     res.json({ success: true, data: settings });
   } catch (error) {

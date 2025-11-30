@@ -1,8 +1,11 @@
-import { Package, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Edit, Trash2, Package } from 'lucide-react';
 import { Table, Badge } from '../ui';
 import { formatCurrency } from '../../utils/formatters';
 
-const ProductTable = ({ products, onEdit, onDelete, onAdjustStock }) => {
+const ProductTable = ({ products, loading, onEdit, onDelete, onAdjustStock }) => {
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (!products?.length) return <div className="p-8 text-center text-gray-500">No products found</div>;
+
   return (
     <Table>
       <Table.Header>
@@ -10,73 +13,30 @@ const ProductTable = ({ products, onEdit, onDelete, onAdjustStock }) => {
           <Table.Head>Product</Table.Head>
           <Table.Head>SKU</Table.Head>
           <Table.Head>Category</Table.Head>
-          <Table.Head>Price</Table.Head>
-          <Table.Head>Stock</Table.Head>
+          <Table.Head className="text-right">Price</Table.Head>
+          <Table.Head className="text-center">Stock</Table.Head>
           <Table.Head>Status</Table.Head>
           <Table.Head className="text-right">Actions</Table.Head>
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {products?.map((product) => {
+        {products.map((product) => {
           const isLowStock = product.currentStock <= product.lowStockThreshold;
-          
           return (
             <Table.Row key={product._id}>
-              <Table.Cell>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                    {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Package className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{product.name}</p>
-                    {product.barcode && (
-                      <p className="text-xs text-gray-500 font-mono">{product.barcode}</p>
-                    )}
-                  </div>
-                </div>
-              </Table.Cell>
-              <Table.Cell>
-                <span className="font-mono text-sm">{product.sku}</span>
-              </Table.Cell>
-              <Table.Cell className="text-gray-500">{product.category?.name || '-'}</Table.Cell>
-              <Table.Cell>
-                <span className="font-mono font-medium">{formatCurrency(product.salePrice)}</span>
-              </Table.Cell>
-              <Table.Cell>
-                <button
-                  onClick={() => onAdjustStock?.(product)}
-                  className={`inline-flex items-center gap-1 font-mono ${
-                    isLowStock ? 'text-red-600 font-medium' : 'text-gray-900'
-                  }`}
-                >
-                  {isLowStock && <AlertTriangle className="w-3 h-3" />}
+              <Table.Cell className="font-medium">{product.name}</Table.Cell>
+              <Table.Cell className="font-mono text-gray-500">{product.sku}</Table.Cell>
+              <Table.Cell>{product.category?.name || '-'}</Table.Cell>
+              <Table.Cell className="text-right font-mono">{formatCurrency(product.salePrice)}</Table.Cell>
+              <Table.Cell className="text-center">
+                <button onClick={() => onAdjustStock?.(product)} className={`px-2 py-1 rounded text-sm font-mono ${isLowStock ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
                   {product.currentStock}
                 </button>
               </Table.Cell>
-              <Table.Cell>
-                <Badge variant={product.isActive ? 'active' : 'inactive'}>
-                  {product.isActive ? 'Active' : 'Inactive'}
-                </Badge>
-              </Table.Cell>
+              <Table.Cell><Badge variant={product.isActive ? 'active' : 'inactive'}>{product.isActive ? 'Active' : 'Inactive'}</Badge></Table.Cell>
               <Table.Cell className="text-right">
-                <div className="flex items-center justify-end gap-1">
-                  <button
-                    onClick={() => onEdit(product)}
-                    className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(product._id)}
-                    className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <button onClick={() => onEdit(product)} className="p-2 hover:bg-gray-100 rounded-lg"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => onDelete(product._id)} className="p-2 hover:bg-red-50 rounded-lg text-red-600"><Trash2 className="w-4 h-4" /></button>
               </Table.Cell>
             </Table.Row>
           );

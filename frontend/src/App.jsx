@@ -17,6 +17,9 @@ import UsersPage from './pages/UsersPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/ProfilePage';
 import AuditLogPage from './pages/AuditLogPage';
+import DiscountsPage from './pages/DiscountsPage';
+import SuppliersPage from './pages/SuppliersPage';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 
 // Layout & Components
 import LayoutShell from './components/layout/LayoutShell';
@@ -62,6 +65,9 @@ function App() {
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/categories" element={<CategoriesPage />} />
                 <Route path="/customers" element={<CustomersPage />} />
+                <Route path="/discounts" element={<DiscountsPage />} />
+                <Route path="/suppliers" element={<SuppliersPage />} />
+                <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
               </Route>
 
