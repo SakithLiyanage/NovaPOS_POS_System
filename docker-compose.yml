@@ -1,49 +1,39 @@
-version: '3.8'
-
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    environment:
-      - VITE_API_BASE_URL=http://localhost:5000/api
-    networks:
-      - novapos-network
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
-    depends_on:
-      - mongo
-    environment:
-      - NODE_ENV=production
-      - PORT=5000
-      - MONGODB_URI=mongodb://mongo:27017/novapos
-      - JWT_SECRET=novapos-super-secret-jwt-key-change-in-production
-      - JWT_EXPIRES_IN=7d
-      - FRONTEND_URL=http://localhost:3000
-    networks:
-      - novapos-network
-
-  mongo:
-    image: mongo:7
+  mongodb:
+    image: mongo:6
+    container_name: novapos-mongodb
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
-    networks:
-      - novapos-network
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=novapos
 
-networks:
-  novapos-network:
-    driver: bridge
+  backend:
+    build: ./backend
+    container_name: novapos-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/novapos
+      - JWT_SECRET=novapos-super-secret-key-change-this
+      - JWT_EXPIRES_IN=7d
+      - FRONTEND_URL=http://localhost
+
+  frontend:
+    build: ./frontend
+    container_name: novapos-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
-  mongo-data:
+  mongodb_data:
