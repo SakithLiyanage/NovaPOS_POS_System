@@ -359,6 +359,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  <p>Made with ❤️ by NovaPOS Team</p>
+  <p>Made with ❤️ by Sakith Liyanage</p>
   <p>⭐ Star this repo if you find it helpful!</p>
 </div>
